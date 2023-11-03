@@ -36,5 +36,174 @@ toc::[]
 
 == Introduction
 
-This repository explores several mechanisms of Identity Providers, like LDAP, htpasswd, and GitHub; as well as how to automatically inherit permissions from LDAP groups, etc.
+This repository explores several mechanisms of Identity Providers, like LDAP, `htpasswd`, and GitHub; as well as how to automatically inherit permissions from LDAP groups, etc.
 
+For users to interact with OpenShift Container Platform, they must first *authenticate* to the cluster. The authentication layer identifies the user associated with requests to the OpenShift Container Platform API. The *authorization* layer then uses information about the requesting user to determine if the request is allowed.
+
+
+.TL;DR Do you want to test it without reading?
+[TIP]
+====
+*PLEASE, do not apply the OAuth object if you already performed customizations in your cluster :)*
+
+You are lucky! Just run the following commands:
+
+[source, bash]
+----
+oc apply -f aux/00-openldap.yaml
+oc apply -f openshift
+----
+====
+
+
+
+== Identity providers
+
+By default, only a `kubeadmin` user exists on your cluster. OpenShift supports several identity providers - htpasswd, LDAP, basic, `htpasswd`, GitHub, GitLab... - so that users can authenticate against them.
+
+In this example, we are going to configure several of them:
+
+* *htpasswd*: To provide a k8s Secret with local users. This is not the most convenient nor the most secure alternative, but it is pretty handy for standalone OCP clusters.
+* *LDAP*: During authentication, the LDAP directory is searched for an entry that matches the provided user name.
+* *GitHub*: [WIP] This is not yet included in this example.
+
+After configuring the providers, access the OCP web console and try to authenticate. You will see the following options:
+
+.Identity Providers in the web console
+image::web-console-providers.png["Identity Providers in the web console", width=80%]
+
+
+
+TIP: Check the OpenShift documentation for Identity Providers in the following https://docs.openshift.com/container-platform/4.14/authentication/understanding-identity-provider.html[link]. 
+
+
+== Authorization
+
+Authorization involves determining whether the identified user has permission to perform the requested action. By default, the most common approach is to use RBAC based on groups. Therefore, we will add users to groups and, then, give roles to those groups.
+
+Using the *htpasswd* provider, we need to add those users to the groups manually. I have created this manifest to add some of the users created in the previous step: `openshift/20-htpasswd-groups.yaml`.
+
+Using the *LDAP* provider, OpenShift is capable of automatically syncing those LDAP records with internal OpenShift Container Platform records, enabling you to manage your groups in one place.
+
+
+
+The format of the configuration file depends upon the schema you are using: RFC 2307, Active Directory, or augmented Active Directory.
+
+
+=== Run the sync manually
+
+
+1. Forward the OpenLDAP port locally to test it easily:
++
+[source, bash]
+----
+oc port-forward -n openldap svc/server 1389:1389
+----
++
+2. Execute the manual sync of groups:
++
+[source, bash]
+----
+oc adm groups sync --sync-config=aux/rfc2307_config.yaml
+----
+
+
+=== Run the sync automatically
+
+Create the resources in:
+
+[source, bash]
+----
+oc apply -f openshift/21-ldap-sync-config.yaml
+----
+
+
+
+
+[IMPORTANT]
+====
+Do you want to test the `CronJob` definition? You can create a Job out of a CronJob using the following command:
+
+[source, bash]
+----
+oc create job test-sync --from=cronjob/ldap-group-syncer -n ldap-sync
+----
+==== 
+
+
+TIP: Check the OpenShift documentation for Syncing LDAP Groups in the following https://docs.openshift.com/container-platform/4.14/authentication/ldap-syncing.html[link]. 
+
+
+
+
+
+
+
+
+
+
+
+:!sectnums: 
+
+
+== Annex: Generate htpasswd users
+
+
+Q: Did you create the secret in `openshift/00-secret-htpasswd.yaml`, but now want to modify the current users? 
+
+A: No problem, follow these steps:
+
+
+1. Modify the `users` file in the aux folder. Add as many as you want:
++
+[source, bash]
+----
+htpasswd -b -B aux/users.htpasswd myusername password
+----
++
+2. Copy the content of the file to `00-secret-htpasswd.yaml`
++
+3. Recreate the `users` secret
+[source, bash]
+----
+oc apply -f openshift/00-secret-htpasswd.yaml
+----
+
+
+
+== Annex: Deploy LDAP instance
+
+Q: Don't you have an external LDAP instance to use? 
+
+A: Don't worry, you can test this configuration using this OpenLDAP quickstart:
+
+
+[source, bash]
+----
+oc apply -f aux/00-openldap.yaml
+----
+
+
+WARNING: Don't forget that this is only for development environments!! *This is not intended for production*.
+
+
+== Annex: Debugging the LDAP configuration
+
+Q: Do you think that you misconfigured LDAP and want to make sure what is really configured in the server?
+
+A: No worries, ssh into the OpenLDAP pod and execute the `ldapsearch` commands:
+
+[source, bash]
+----
+# List all
+ldapsearch -H ldap://localhost:1389 -x -b "dc=acme,dc=org" -D "cn=admin,dc=acme,dc=org" -w adminpassword
+
+# List all users
+ldapsearch -H ldap://localhost:1389 -x -b "dc=acme,dc=org" -D "cn=admin,dc=acme,dc=org" -w adminpassword "objectclass=person"
+
+# List all groups
+ldapsearch -H ldap://localhost:1389 -x -b "dc=acme,dc=org" -D "cn=admin,dc=acme,dc=org" -w adminpassword "objectclass=groupOfNames"
+
+# List all users of the Admins group
+ldapsearch -H ldap://localhost:1389 -x -b "cn=admins,ou=groups,dc=acme,dc=org" -D "cn=admin,dc=acme,dc=org" -w adminpassword member
+----

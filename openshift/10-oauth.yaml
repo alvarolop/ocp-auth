@@ -1,0 +1,34 @@
+---
+apiVersion: config.openshift.io/v1
+kind: OAuth
+metadata:
+  name: cluster
+spec:
+  identityProviders:
+    - name: LDAP
+      mappingMethod: claim
+      type: LDAP
+      ldap:
+        attributes:
+          id:
+          - dn
+          email:
+          - mail
+          name:
+          - cn
+          preferredUsername:
+          - uid
+        bindDN: "CN=admin,DC=acme,DC=org"
+        bindPassword:
+          name: ldap-secret
+        # ca:
+        #   name: ca-ldap
+        insecure: true
+        url: ldap://server.openldap.svc.cluster.local:1389/OU=people,DC=acme,DC=org?uid?sub
+    - name: Local Users
+      mappingMethod: claim
+      type: HTPasswd
+      htpasswd:
+        fileData:
+          name: htpass-secret
+---
