@@ -1,0 +1,2 @@
+cn=testgroup01,ou=groups,dc=acme,dc=org
+cn=testgroup02,ou=groups,dc=acme,dc=org

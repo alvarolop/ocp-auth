@@ -47,6 +47,14 @@ spec:
           ports:
             - name: tcp-ldap
               containerPort: 1389
+          # securityContext:
+          #   allowPrivilegeEscalation: true
+          #   runAsNonRoot: true
+          #   seccompProfile:
+          #     type: RuntimeDefault
+          #   capabilities:
+          #     drop:
+          #     - ALL
           volumeMounts:
             - name: ldifs-volume
               mountPath: /tmp/ldifs
@@ -198,6 +206,23 @@ data:
 
     dn: cn=viewer,ou=groups,dc=acme,dc=org
     cn: viewer
+    objectclass: groupOfNames
+    member: uid=user-11,ou=people,dc=acme,dc=org
+    member: uid=user-12,ou=people,dc=acme,dc=org
+
+    dn: cn=testgroup01,ou=groups,dc=acme,dc=org
+    cn: testgroup01
+    objectclass: groupOfNames
+    member: uid=user-11,ou=people,dc=acme,dc=org
+
+    dn: cn=testgroup02,ou=groups,dc=acme,dc=org
+    cn: testgroup02
+    objectclass: groupOfNames
+    member: uid=user-11,ou=people,dc=acme,dc=org
+    member: uid=user-12,ou=people,dc=acme,dc=org
+
+    dn: cn=testgroup03,ou=groups,dc=acme,dc=org
+    cn: testgroup03
     objectclass: groupOfNames
     member: uid=user-11,ou=people,dc=acme,dc=org
     member: uid=user-12,ou=people,dc=acme,dc=org

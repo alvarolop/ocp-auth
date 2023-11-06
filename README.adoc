@@ -136,11 +136,30 @@ TIP: Check the OpenShift documentation for Syncing LDAP Groups in the following 
 
 
 
+== Sync whitelisting
+
+*Argg!!* You just synced the groups and didn't notice that there are hundreds of groups in your LDAP? No worries, we can solve that... let me introduce you to the LDAP whitelists!
+
+
+
+[source, bash]
+----
+oc apply -f openshift/22-ldap-sync-config-whitelist.yaml
+----
 
 
 
 
 
+[IMPORTANT]
+====
+Do you want to test the whitelist and blacklist definition? You can sync manually using the following command:
+
+[source, bash]
+----
+oc adm groups sync --whitelist=aux/whitelist.txt --sync-config=aux/rfc2307_config.yaml 
+----
+==== 
 
 
 :sectnums!: 
